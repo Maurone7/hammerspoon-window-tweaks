@@ -24,13 +24,14 @@ wait_for_hammerspoon() {
 }
 
 wait_for_hammerspoon
-hs -c 'print("window-tweaks-smoke-reload")' >/dev/null
+# Errors are only looked for in console text added after this point.
+console_start=$(hs -c 'print(#hs.console.getConsole())' | tail -n 1)
 hs -c 'hs.reload()' >/dev/null 2>&1 || true
 sleep 1
 wait_for_hammerspoon
 sleep 1
 
-output=$(hs -c "dofile('$dir/smoke.lua')")
+output=$(hs -c "SMOKE_CONSOLE_START = $console_start; dofile('$dir/smoke.lua')")
 echo "$output"
 case "$output" in
   *"smoke test passed"*) exit 0 ;;

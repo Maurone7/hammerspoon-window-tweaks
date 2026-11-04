@@ -1,7 +1,6 @@
 -- Checks the running Hammerspoon after a reload. Run by tests/smoke.sh;
 -- reads state only, so it never clicks, types or moves windows.
 local NAMES = { "FullscreenTrafficLights", "FinderCut", "ClickThrough", "WindowTweaksMenu" }
-local MARK = "window-tweaks-smoke-reload"
 local failures = 0
 
 local function check(ok, what, detail)
@@ -67,16 +66,13 @@ if menu and menu:isRunning() then
   check(menu._menubar:isInMenuBar(), "menu-bar icon is in the menu bar")
 end
 
--- Only look at the console after the latest reload marker, and only for
--- Hammerspoon's own error formats ("*** ERROR:", "LuaSkin ... ERROR:").
+-- Only look at console text added since the reload (smoke.sh passes the
+-- console's length from just before it as SMOKE_CONSOLE_START), and only
+-- for Hammerspoon's own error formats ("*** ERROR:", "LuaSkin ... ERROR:").
 local console = hs.console.getConsole()
-local markEnd, from = nil, 1
-while true do
-  local _, e = console:find(MARK, from, true)
-  if not e then break end
-  markEnd, from = e, e + 1
-end
-local sinceReload = markEnd and console:sub(markEnd + 1) or console
+local start = rawget(_G, "SMOKE_CONSOLE_START") or 0
+if start > #console then start = 0 end -- the console was cleared or trimmed
+local sinceReload = console:sub(start + 1)
 local errorLine = sinceReload:match("[^\n]*ERROR[^\n]*") or sinceReload:match("[^\n]*stack traceback[^\n]*")
 check(errorLine == nil, "no errors in the console since the reload", errorLine)
 
