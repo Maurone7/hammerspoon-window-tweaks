@@ -1,12 +1,13 @@
 # hammerspoon-window-tweaks
 
-Three small [Hammerspoon](https://www.hammerspoon.org) Spoons that fix macOS window annoyances. Each one can be turned on separately.
+Small [Hammerspoon](https://www.hammerspoon.org) Spoons that fix macOS window annoyances. Each one can be turned on separately.
 
 | Spoon | What it does |
 | --- | --- |
 | **FullscreenTrafficLights** | Keeps red/yellow/green buttons visible on every fullscreen window, focused or not. Normally macOS hides them until you hover at the top of the screen. |
 | **FinderCut** | Cmd+X then Cmd+V cuts and moves files in Finder. |
 | **ClickThrough** | One click on an inactive app's window both activates it and clicks what's under the mouse, so you don't have to click twice. |
+| **WindowTweaksMenu** | A menu-bar icon to turn the others on and off, reset button positions and reload the config. |
 
 ## Install
 
@@ -16,21 +17,25 @@ Three small [Hammerspoon](https://www.hammerspoon.org) Spoons that fix macOS win
    brew install --cask hammerspoon
    ```
 
-2. Clone this repo and run the installer:
+2. Get the Spoons, using either option:
 
-   ```sh
-   git clone https://github.com/Maurone7/hammerspoon-window-tweaks.git
-   cd hammerspoon-window-tweaks
-   ./install.sh          # copies the Spoons into ~/.hammerspoon/Spoons
-   ./install.sh --link   # or symlink them, so `git pull` updates them
-   ```
+   - **From a release:** download the `.spoon.zip` files you want from the [latest release](https://github.com/Maurone7/hammerspoon-window-tweaks/releases/latest). Unzip them and double-click each `.spoon` to install it.
+   - **With git:**
 
-3. Add the Spoons you want to `~/.hammerspoon/init.lua`:
+     ```sh
+     git clone https://github.com/Maurone7/hammerspoon-window-tweaks.git
+     cd hammerspoon-window-tweaks
+     ./install.sh          # copies the Spoons into ~/.hammerspoon/Spoons
+     ./install.sh --link   # or symlink them, so `git pull` updates them
+     ```
+
+3. Add the Spoons you want to `~/.hammerspoon/init.lua`. Load the menu last, so it can control the others:
 
    ```lua
    hs.loadSpoon("FullscreenTrafficLights"):start()
    hs.loadSpoon("FinderCut"):start()
    hs.loadSpoon("ClickThrough"):start()
+   hs.loadSpoon("WindowTweaksMenu"):start()
    ```
 
 4. Open Hammerspoon and choose **Reload Config** from its menu-bar icon.
@@ -47,11 +52,14 @@ In native fullscreen, macOS hides the window buttons until you hover at the top 
 
 Hover over the buttons to see their ×, − and ↙ symbols.
 
-**Moving them:** Option-drag the buttons anywhere, including up into the menu-bar strip. The position is saved per app. To put every app back at the default position:
+**Moving them:**
+- **Option-drag** the buttons anywhere, including up into the menu-bar strip. The position is saved per app.
+- **Option-double-click** them to put that app's buttons back at the default position.
+- To reset every app, use **Reset Button Positions** in the WindowTweaksMenu, or run:
 
-```lua
-spoon.FullscreenTrafficLights:resetPositions()
-```
+  ```lua
+  spoon.FullscreenTrafficLights:resetPositions()
+  ```
 
 **Options:** set these before `:start()`.
 
@@ -85,23 +93,44 @@ macOS normally uses your first click on an inactive app's window just to activat
 - **Cmd-click** keeps its standard macOS meaning: click in a background window without bringing it forward.
 - The first click can lag by up to `activationTimeout` seconds (default `0.3`) while the app comes forward. Drags that start on an inactive window are held and replayed too, so they arrive complete.
 
+## WindowTweaksMenu
+
+Adds a three-dot icon to the menu bar with:
+
+- A checkbox for each of the other Spoons that's loaded. Unchecking one turns it off, and it stays off after a reload or restart until you check it again.
+- **Reset Button Positions**, which moves every app's fullscreen buttons back to the default.
+- **Reload Config**, which reloads Hammerspoon.
+
+Load it after the Spoons it controls.
+
 ## Uninstall
 
 1. Remove the `hs.loadSpoon(...)` lines from `~/.hammerspoon/init.lua`.
 2. Delete the Spoons:
 
    ```sh
-   rm -rf ~/.hammerspoon/Spoons/{FullscreenTrafficLights,FinderCut,ClickThrough}.spoon
+   rm -rf ~/.hammerspoon/Spoons/{FullscreenTrafficLights,FinderCut,ClickThrough,WindowTweaksMenu}.spoon
    ```
 
 ## Development
 
-Install with `./install.sh --link` so edits in this checkout apply after a Hammerspoon reload. Lint before pushing; GitHub Actions runs the same check on every push and pull request:
+Install with `./install.sh --link` so edits in this checkout apply after a Hammerspoon reload.
+
+**Unit tests** run the real Spoon code against a fake Hammerspoon API (`tests/mock_hs.lua`). It simulates timers, key and mouse events, windows, the clipboard and Accessibility elements, so the tests run anywhere Lua does:
 
 ```sh
-brew install luacheck
-luacheck Spoons
+brew install lua luacheck
+lua tests/run.lua
+luacheck Spoons tests
 ```
+
+**Smoke test** on your Mac: reloads Hammerspoon and checks that the installed Spoons load at the right version, are running, show buttons on every fullscreen window, and log no errors. It only reads state; it never clicks or types:
+
+```sh
+sh tests/smoke.sh
+```
+
+GitHub Actions runs luacheck and the unit tests on every push and pull request. Pushing a tag like `v1.3.0` runs the tests and publishes a release with a zip of each Spoon.
 
 ## License
 

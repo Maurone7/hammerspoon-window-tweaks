@@ -5,13 +5,13 @@
 --- macOS hides the real close/minimize/fullscreen buttons in native fullscreen.
 --- This Spoon draws working stand-ins on every fullscreen window currently on
 --- screen, focused or not. Option-drag the buttons to move them; the position
---- is remembered per app.
+--- is remembered per app. Option-double-click them to reset that app.
 
 local obj = {}
 obj.__index = obj
 
 obj.name = "FullscreenTrafficLights"
-obj.version = "1.2"
+obj.version = "1.3"
 obj.author = "Maurone7"
 obj.homepage = "https://github.com/Maurone7/hammerspoon-window-tweaks"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -170,7 +170,15 @@ function obj:_newOverlay(win)
       setGlyphAlpha(canvas, 0)
     elseif event == "mouseDown" then
       overlay.dragMode = hs.eventtap.checkKeyboardModifiers().alt
-      if overlay.dragMode and not self._dragTap then self:_startDrag(overlay) end
+      if not overlay.dragMode then return end
+      local now = hs.timer.secondsSinceEpoch()
+      if now - (overlay.lastAltDown or -math.huge) < hs.eventtap.doubleClickInterval() then
+        overlay.lastAltDown = nil
+        self:resetPosition(overlay.win)
+      elseif not self._dragTap then
+        overlay.lastAltDown = now
+        self:_startDrag(overlay)
+      end
     elseif event == "mouseUp" then
       if overlay.dragMode then
         overlay.dragMode = false
@@ -272,7 +280,41 @@ end
 function obj:resetPositions()
   self._offsets = {}
   hs.settings.clear(SETTINGS_KEY)
+  self:_placeAll()
   return self
+end
+
+--- FullscreenTrafficLights:resetPosition(win)
+--- Method
+--- Forgets the Option-dragged position for the app that owns `win`, moving
+--- its buttons back to `defaultOffset`. Option-double-clicking the buttons
+--- does the same.
+---
+--- Parameters:
+---  * win - an `hs.window` of the app to reset
+---
+--- Returns:
+---  * The FullscreenTrafficLights object
+function obj:resetPosition(win)
+  self._offsets = self._offsets or hs.settings.get(SETTINGS_KEY) or {}
+  self._offsets[appKey(win)] = nil
+  hs.settings.set(SETTINGS_KEY, self._offsets)
+  self:_placeAll()
+  return self
+end
+
+--- FullscreenTrafficLights:isRunning()
+--- Method
+--- Whether the Spoon is started.
+---
+--- Returns:
+---  * A boolean
+function obj:isRunning()
+  return self._timer ~= nil
+end
+
+function obj:_placeAll()
+  for _, overlay in pairs(self._overlays or {}) do self:_place(overlay) end
 end
 
 return obj

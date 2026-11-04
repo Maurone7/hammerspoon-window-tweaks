@@ -1,0 +1,28 @@
+name: Release
+
+# Push a tag like v1.3.0 to publish a release with a zip of each Spoon.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lua 5.4
+        run: sudo apt-get update && sudo apt-get install -y lua5.4
+      - name: Run unit tests
+        run: lua5.4 tests/run.lua
+      - name: Zip each Spoon
+        run: |
+          mkdir dist
+          cd Spoons
+          for s in *.spoon; do zip -qr "../dist/$s.zip" "$s"; done
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.zip --title "$GITHUB_REF_NAME" --generate-notes
