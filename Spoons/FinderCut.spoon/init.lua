@@ -11,7 +11,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "FinderCut"
-obj.version = "1.1"
+obj.version = "1.2"
 obj.author = "Maurone7"
 obj.homepage = "https://github.com/Maurone7/hammerspoon-window-tweaks"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -97,6 +97,16 @@ function obj:stop()
     self[key] = nil
   end
   return self
+end
+
+--- FinderCut:isRunning()
+--- Method
+--- Whether the Spoon is started.
+---
+--- Returns:
+---  * A boolean
+function obj:isRunning()
+  return self._tap ~= nil
 end
 
 return obj
