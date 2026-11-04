@@ -72,7 +72,7 @@ Finder can't cut files. You have to copy and then use Cmd+Option+V ("Move Item H
 
 - **Cmd+X** copies the selected files and marks them to be moved.
 - **Cmd+V** in another folder then moves them instead of copying.
-- **Cmd+C** is a normal copy and cancels a pending cut.
+- **Copying anything else**, in Finder or any other app, cancels a pending cut, so Cmd+V never moves files you didn't cut. Cmd+X with nothing selected does nothing.
 
 While you're editing text, such as renaming a file or typing in the search field, the keys behave normally. Other apps are not affected.
 
@@ -80,10 +80,9 @@ While you're editing text, such as renaming a file or typing in the search field
 
 macOS normally uses your first click on an inactive app's window just to activate it. With this Spoon, that click is held for a moment while the app activates, then replayed, so buttons, links and text positions respond to the first click.
 
-- Clicks in the active app, the Dock, the menu bar and the desktop are not affected.
+- Clicks in the active app, the Dock, the menu bar and the desktop are not affected. Neither are clicks on a window's title bar, empty background or its own traffic lights, which already work on the first click.
 - **Cmd-click** keeps its standard macOS meaning: click in a background window without bringing it forward.
-- The first click can lag by up to `activationTimeout` seconds (default `0.3`) while the app comes forward.
-- If you start dragging immediately on an inactive window, the very start of the drag may be lost.
+- The first click can lag by up to `activationTimeout` seconds (default `0.3`) while the app comes forward. Drags that start on an inactive window are held and replayed too, so they arrive complete.
 
 ## Uninstall
 

@@ -11,7 +11,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "FullscreenTrafficLights"
-obj.version = "1.0"
+obj.version = "1.1"
 obj.author = "Maurone7"
 obj.homepage = "https://github.com/Maurone7/hammerspoon-window-tweaks"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -46,12 +46,31 @@ local COLORS = {
 }
 local GLYPHS = { close = "×", minimize = "−", fullscreen = "↙" }
 
+-- One-shot timers are kept here so they can't be garbage-collected before
+-- they fire.
+local timers = {}
+
+local function waitThen(predicate, action, timeout)
+  local deadline = hs.timer.secondsSinceEpoch() + timeout
+  local timer
+  timer = hs.timer.waitUntil(function()
+    return predicate() or hs.timer.secondsSinceEpoch() > deadline
+  end, function()
+    timers[timer] = nil
+    action()
+  end, 0.05)
+  timers[timer] = true
+end
+
 local ACTIONS = {
   close = function(win) win:close() end,
   minimize = function(win)
-    -- macOS can't minimize a fullscreen window, so leave fullscreen first.
+    -- macOS can't minimize a fullscreen window, so leave fullscreen first and
+    -- minimize once the exit animation has finished.
     win:setFullScreen(false)
-    hs.timer.doAfter(1, function() win:minimize() end)
+    waitThen(function() return not win:isFullScreen() end, function()
+      waitThen(function() return false end, function() win:minimize() end, 0.3)
+    end, 3)
   end,
   fullscreen = function(win) win:setFullScreen(false) end,
 }
@@ -69,6 +88,18 @@ end
 
 function obj:_offsetFor(win)
   return self._offsets[appKey(win)] or self.defaultOffset
+end
+
+-- Where the buttons go on `win`, kept inside its screen in case the saved
+-- offset came from a larger display.
+function obj:_positionFor(win)
+  local f, off = win:frame(), self:_offsetFor(win)
+  local s = win:screen():fullFrame()
+  local w, h = 3 * self.size + 2 * self.gap, self.size
+  return {
+    x = math.max(s.x, math.min(f.x + off.x, s.x + s.w - w)),
+    y = math.max(s.y, math.min(f.y + off.y, s.y + s.h - h)),
+  }
 end
 
 function obj:_startDrag(overlay)
@@ -153,9 +184,8 @@ function obj:_update()
     if win:isFullScreen() then
       local id = win:id()
       local overlay = overlays[id] or self:_newOverlay(win)
-      local f, off = win:frame(), self:_offsetFor(win)
       overlays[id], seen[id], overlay.win = overlay, true, win
-      overlay.canvas:topLeft({ x = f.x + off.x, y = f.y + off.y })
+      overlay.canvas:topLeft(self:_positionFor(win))
       overlay.canvas:show()
     end
   end
@@ -179,7 +209,8 @@ function obj:start()
   self._overlays = {}
   self._timer = hs.timer.doEvery(self.interval, function() self:_update() end)
   self._spacesWatcher = hs.spaces.watcher.new(function()
-    hs.timer.doAfter(0.05, function() self:_update() end)
+    if self._spacesTimer then self._spacesTimer:stop() end
+    self._spacesTimer = hs.timer.doAfter(0.05, function() self:_update() end)
   end):start()
   self:_update()
   return self
@@ -193,11 +224,12 @@ end
 ---  * The FullscreenTrafficLights object
 function obj:stop()
   if not self._timer then return self end
-  self._timer:stop()
-  self._spacesWatcher:stop()
-  if self._dragTap then self._dragTap:stop() end
+  for _, key in ipairs({ "_timer", "_spacesWatcher", "_spacesTimer", "_dragTap" }) do
+    if self[key] then self[key]:stop() end
+    self[key] = nil
+  end
   for _, overlay in pairs(self._overlays) do overlay.canvas:delete() end
-  self._timer, self._spacesWatcher, self._dragTap, self._overlays = nil, nil, nil, nil
+  self._overlays = nil
   return self
 end
 
