@@ -11,7 +11,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "FullscreenTrafficLights"
-obj.version = "1.1"
+obj.version = "1.2"
 obj.author = "Maurone7"
 obj.homepage = "https://github.com/Maurone7/hammerspoon-window-tweaks"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -34,8 +34,15 @@ obj.defaultOffset = { x = 12, y = 10 }
 
 --- FullscreenTrafficLights.interval
 --- Variable
---- Seconds between checks for fullscreen windows. Default 0.5.
+--- Seconds between position updates of the buttons already shown. Default 0.5.
 obj.interval = 0.5
+
+--- FullscreenTrafficLights.scanInterval
+--- Variable
+--- Seconds between full scans for new fullscreen windows. Entering or leaving
+--- fullscreen switches Spaces, which triggers a scan right away; this is only
+--- a fallback. Default 3.
+obj.scanInterval = 3
 
 local SETTINGS_KEY = "fullscreenTrafficLights.offsets"
 local ORDER = { "close", "minimize", "fullscreen" }
@@ -48,7 +55,7 @@ local GLYPHS = { close = "×", minimize = "−", fullscreen = "↙" }
 
 -- One-shot timers are kept here so they can't be garbage-collected before
 -- they fire.
-local timers = {}
+local timers = {} -- luacheck: ignore 241
 
 local function waitThen(predicate, action, timeout)
   local deadline = hs.timer.secondsSinceEpoch() + timeout
@@ -177,7 +184,18 @@ function obj:_newOverlay(win)
   return overlay
 end
 
-function obj:_update()
+function obj:_place(overlay)
+  overlay.canvas:topLeft(self:_positionFor(overlay.win))
+  if not overlay.canvas:isShowing() then overlay.canvas:show() end
+end
+
+function obj:_remove(id)
+  self._overlays[id].canvas:delete()
+  self._overlays[id] = nil
+end
+
+-- Full scan: listing every on-screen window is the expensive part.
+function obj:_scan()
   if self._dragTap then return end
   local overlays, seen = self._overlays, {}
   for _, win in ipairs(hs.window.orderedWindows()) do
@@ -185,14 +203,22 @@ function obj:_update()
       local id = win:id()
       local overlay = overlays[id] or self:_newOverlay(win)
       overlays[id], seen[id], overlay.win = overlay, true, win
-      overlay.canvas:topLeft(self:_positionFor(win))
-      overlay.canvas:show()
+      self:_place(overlay)
     end
   end
-  for id, overlay in pairs(overlays) do
-    if not seen[id] then
-      overlay.canvas:delete()
-      overlays[id] = nil
+  for id in pairs(overlays) do
+    if not seen[id] then self:_remove(id) end
+  end
+end
+
+-- Cheap refresh of the windows that already have buttons.
+function obj:_refresh()
+  if self._dragTap then return end
+  for id, overlay in pairs(self._overlays) do
+    if overlay.win:isFullScreen() then
+      self:_place(overlay)
+    else
+      self:_remove(id)
     end
   end
 end
@@ -207,12 +233,15 @@ function obj:start()
   if self._timer then return self end
   self._offsets = hs.settings.get(SETTINGS_KEY) or {}
   self._overlays = {}
-  self._timer = hs.timer.doEvery(self.interval, function() self:_update() end)
-  self._spacesWatcher = hs.spaces.watcher.new(function()
+  self._timer = hs.timer.doEvery(self.interval, function() self:_refresh() end)
+  self._scanTimer = hs.timer.doEvery(self.scanInterval, function() self:_scan() end)
+  local function scanSoon()
     if self._spacesTimer then self._spacesTimer:stop() end
-    self._spacesTimer = hs.timer.doAfter(0.05, function() self:_update() end)
-  end):start()
-  self:_update()
+    self._spacesTimer = hs.timer.doAfter(0.05, function() self:_scan() end)
+  end
+  self._spacesWatcher = hs.spaces.watcher.new(scanSoon):start()
+  self._screenWatcher = hs.screen.watcher.new(scanSoon):start()
+  self:_scan()
   return self
 end
 
@@ -224,7 +253,7 @@ end
 ---  * The FullscreenTrafficLights object
 function obj:stop()
   if not self._timer then return self end
-  for _, key in ipairs({ "_timer", "_spacesWatcher", "_spacesTimer", "_dragTap" }) do
+  for _, key in ipairs({ "_timer", "_scanTimer", "_spacesWatcher", "_screenWatcher", "_spacesTimer", "_dragTap" }) do
     if self[key] then self[key]:stop() end
     self[key] = nil
   end

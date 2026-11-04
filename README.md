@@ -60,11 +60,12 @@ hs.loadSpoon("FullscreenTrafficLights")
 spoon.FullscreenTrafficLights.size = 12                         -- button diameter (points)
 spoon.FullscreenTrafficLights.gap = 8                           -- space between buttons
 spoon.FullscreenTrafficLights.defaultOffset = { x = 12, y = 10 } -- from window's top-left
-spoon.FullscreenTrafficLights.interval = 0.5                    -- seconds between checks
+spoon.FullscreenTrafficLights.interval = 0.5                    -- seconds between position updates
+spoon.FullscreenTrafficLights.scanInterval = 3                  -- fallback scan for new fullscreen windows
 spoon.FullscreenTrafficLights:start()
 ```
 
-These are copies drawn over the window, not the system's own buttons. They can take up to `interval` seconds to appear after a window enters fullscreen.
+These are copies drawn over the window, not the system's own buttons. They appear as soon as a window enters fullscreen, because that switches Spaces and triggers a scan. A slower background scan every `scanInterval` seconds catches anything missed.
 
 ## FinderCut
 
@@ -92,6 +93,15 @@ macOS normally uses your first click on an inactive app's window just to activat
    ```sh
    rm -rf ~/.hammerspoon/Spoons/{FullscreenTrafficLights,FinderCut,ClickThrough}.spoon
    ```
+
+## Development
+
+Install with `./install.sh --link` so edits in this checkout apply after a Hammerspoon reload. Lint before pushing; GitHub Actions runs the same check on every push and pull request:
+
+```sh
+brew install luacheck
+luacheck Spoons
+```
 
 ## License
 
