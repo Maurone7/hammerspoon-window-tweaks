@@ -74,6 +74,22 @@ return function(T)
     T.eq(mock.reloaded, true, "reloaded")
   end)
 
+  T.test("Snap Window submenu snaps the focused window", function()
+    local mock = T.setup()
+    mock.screens = { mock.screen(1, { x = 0, y = 0, w = 1000, h = 800 }) }
+    mock.frontApp = mock.app("com.example.App", 300, "Example")
+    local win = mock.window({ id = 1, app = mock.frontApp, fullscreen = false, screen = mock.screens[1] })
+    mock.focusedWindow = win
+    spoon.WindowSnap = T.load("WindowSnap"):start()
+    T.load("WindowTweaksMenu"):start()
+    local items = mock.menubars[1].menu()
+    T.eq(titles(items), "Window Snapping | - | Snap Window | Reload Config", "items")
+    items[3].menu[1].fn()
+    T.eq(win:frame().w, 500, "snapped to the left half")
+    items[1].fn()
+    T.eq(mock.menubars[1].menu()[3].disabled, true, "greyed out while snapping is off")
+  end)
+
   T.test("stop() removes the icon", function()
     local _, menu, mb = setup()
     menu:stop()

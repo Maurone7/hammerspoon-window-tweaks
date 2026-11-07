@@ -27,6 +27,7 @@ Now add the ones you want to ~/.hammerspoon/init.lua (the menu last):
   hs.loadSpoon("FullscreenTrafficLights"):start()
   hs.loadSpoon("FinderCut"):start()
   hs.loadSpoon("ClickThrough"):start()
+  hs.loadSpoon("WindowSnap"):start()
   hs.loadSpoon("WindowTweaksMenu"):start()
 
 then choose "Reload Config" from the Hammerspoon menu.

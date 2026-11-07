@@ -1,6 +1,6 @@
 -- Checks the running Hammerspoon after a reload. Run by tests/smoke.sh;
 -- reads state only, so it never clicks, types or moves windows.
-local NAMES = { "FullscreenTrafficLights", "FinderCut", "ClickThrough", "WindowTweaksMenu" }
+local NAMES = { "FullscreenTrafficLights", "FinderCut", "ClickThrough", "WindowSnap", "WindowTweaksMenu" }
 local failures = 0
 
 local function check(ok, what, detail)
@@ -56,9 +56,19 @@ if lights and lights:isRunning() then
     string.format("%d overlays, %d showing", overlays, showing))
 end
 
-for _, name in ipairs({ "FinderCut", "ClickThrough" }) do
+for _, name in ipairs({ "FinderCut", "ClickThrough", "WindowSnap" }) do
   local s = spoon[name]
-  if s and s:isRunning() then check(s._tap:isEnabled(), name .. " event tap is enabled") end
+  if s and s:isRunning() and s._tap then check(s._tap:isEnabled(), name .. " event tap is enabled") end
+end
+
+local snap = spoon.WindowSnap
+if snap and snap:isRunning() then
+  local bound = 0
+  for name in pairs(snap.hotkeys) do
+    if not (snap._tapHalves and snap._tapHalves[name]) then bound = bound + 1 end
+  end
+  check(#snap._hotkeys == bound, string.format("all %d snapping shortcuts are bound", bound))
+  if snap._keyTap then check(snap._keyTap:isEnabled(), "WindowSnap arrow-key event tap is enabled") end
 end
 
 local menu = spoon.WindowTweaksMenu

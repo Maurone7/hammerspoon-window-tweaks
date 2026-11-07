@@ -1,7 +1,8 @@
 --- === WindowTweaksMenu ===
 ---
---- Menu-bar icon to turn the other window-tweaks Spoons on and off, reset
---- the fullscreen button positions and reload the Hammerspoon config.
+--- Menu-bar icon to turn the other window-tweaks Spoons on and off, snap the
+--- focused window, reset the fullscreen button positions and reload the
+--- Hammerspoon config.
 ---
 --- Load and start it after the Spoons it controls. Features turned off from
 --- the menu stay off after a reload or restart.
@@ -10,7 +11,7 @@ local obj = {}
 obj.__index = obj
 
 obj.name = "WindowTweaksMenu"
-obj.version = "1.0"
+obj.version = "1.1"
 obj.author = "Maurone7"
 obj.homepage = "https://github.com/Maurone7/hammerspoon-window-tweaks"
 obj.license = "MIT - https://opensource.org/licenses/MIT"
@@ -25,6 +26,7 @@ obj.features = {
   { spoon = "FullscreenTrafficLights", title = "Fullscreen Traffic Lights" },
   { spoon = "FinderCut", title = "Cut & Paste Files in Finder" },
   { spoon = "ClickThrough", title = "Single-Click Activation" },
+  { spoon = "WindowSnap", title = "Window Snapping" },
 }
 
 -- Three dots, like the traffic lights, drawn as a template image so macOS
@@ -67,6 +69,15 @@ function obj:_menu()
     end
   end
   table.insert(items, { title = "-" })
+  local snap = spoon.WindowSnap
+  if snap then
+    local running = snap:isRunning()
+    table.insert(items, {
+      title = "Snap Window",
+      disabled = not running,
+      menu = running and snap:menuItems() or { { title = "Window Snapping is off", disabled = true } },
+    })
+  end
   local lights = spoon.FullscreenTrafficLights
   if lights then
     table.insert(items, {

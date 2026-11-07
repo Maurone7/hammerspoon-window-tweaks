@@ -37,6 +37,7 @@ for _, file in ipairs({
   "fullscreen_traffic_lights_test",
   "finder_cut_test",
   "click_through_test",
+  "window_snap_test",
   "window_tweaks_menu_test",
 }) do
   local group = #tests
